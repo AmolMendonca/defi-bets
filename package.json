@@ -2,9 +2,14 @@
   "name": "hardhat-project",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.18"
+    "autoprefixer": "^10.4.20",
+    "hardhat": "^2.22.18",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.0.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.7"
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "lucide-react": "^0.474.0"
   }
 }

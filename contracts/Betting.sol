@@ -10,10 +10,10 @@ contract Betting {
         address winner;
         uint createdAt;
         bool disputed;
-        address creatorConfirmed; // Winner address confirmed by the creator
-        address participantConfirmed; // Winner address confirmed by the participant
+        address creatorConfirmed; 
+        address participantConfirmed; 
     }
-
+    
     mapping(uint => Bet) public bets;
     uint public betCounter;
     address public arbitrator;
