@@ -19,6 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+##fuzzy search
 @app.get("/search", response_model=List[dict])
 def search_bets_by_title(query: str):
     titles = []
@@ -34,7 +35,7 @@ def search_bets_by_title(query: str):
                 results.append(bet)
                 break 
     
-    
+
     if not results:
         raise HTTPException(status_code=404, detail="No bets found matching the query")
     
