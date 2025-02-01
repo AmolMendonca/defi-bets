@@ -7,7 +7,7 @@ async function main() {
   // Deploy mock tokens first (for testnet demo)
   const MockToken = await ethers.getContractFactory("MockToken");
   console.log("Deploying Mock DAI...");
-  const mockDAI = await MockToken.deploy("Mock DAI", "mDAI");
+  const mockDAI = await MockToken.deploy("Seiyuko", "Sey");
   await mockDAI.waitForDeployment();
   console.log("Mock DAI deployed to:", await mockDAI.getAddress());
 
