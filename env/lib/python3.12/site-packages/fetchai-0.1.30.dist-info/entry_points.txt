@@ -1,0 +1,2 @@
+[console_scripts]
+fetchai-cli = fetchai.cli:cli
