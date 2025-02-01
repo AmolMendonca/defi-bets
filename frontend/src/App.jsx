@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import LandingPage from './components/LandingPage'
-import Search from "./components/Search";
+import Search from "./pages/Search";
 import CreateBet from './pages/CreateBet'
 import BetDetails from './pages/BetDetails';
 import Documentation from './pages/Documentation'

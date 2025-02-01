@@ -31,7 +31,10 @@ def search_bets_by_title(query: str):
     results = []
     for bet in bets:
         for match in matches:
-            if match[0] == bet["title"] and match[1] > 60:
+            if query == "":
+                results.append(bet)
+                break
+            elif match[0] == bet["title"] and match[1] > 60:
                 results.append(bet)
                 break 
     
