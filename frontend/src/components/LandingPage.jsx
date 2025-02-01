@@ -29,6 +29,7 @@ const LandingPage = () => {
     console.log("Connecting wallet...");
   };
 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-slate-100 relative overflow-hidden">
       {}
@@ -57,8 +58,9 @@ const LandingPage = () => {
             >
               Connect Wallet
             </button>
-            <button className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-all border border-purple-200 shadow-md hover:shadow-lg">
-              Sign Up
+            <button onClick={() => navigate('/documentation')}
+              className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-all border border-purple-200 shadow-md hover:shadow-lg">
+              Docs
             </button>
           </div>
         </nav>
