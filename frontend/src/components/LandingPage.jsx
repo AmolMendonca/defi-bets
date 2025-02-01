@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ArrowRight, Sparkles, Shield, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const LandingPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -25,6 +27,7 @@ const LandingPage = () => {
   const connectWallet = () => {
     console.log('Connecting wallet...');
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-slate-100 relative overflow-hidden">
@@ -50,8 +53,9 @@ const LandingPage = () => {
               className="px-4 py-2 text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-all shadow-md hover:shadow-lg">
               Connect Wallet
             </button>
-            <button className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-all border border-purple-200 shadow-md hover:shadow-lg">
-              Sign Up
+            <button onClick={() => navigate('/documentation')}
+              className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-all border border-purple-200 shadow-md hover:shadow-lg">
+              Docs
             </button>
           </div>
         </nav>
@@ -94,7 +98,8 @@ const LandingPage = () => {
             Create Bet
             <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={20} />
         </button>
-          <button className="group px-6 py-3 bg-white text-purple-600 rounded-xl hover:bg-purple-50 flex items-center transition-all border border-purple-200 shadow-md hover:shadow-lg">
+          <button 
+                      className="group px-6 py-3 bg-white text-purple-600 rounded-xl hover:bg-purple-50 flex items-center transition-all border border-purple-200 shadow-md hover:shadow-lg">
             Join Bet
             <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={20} />
           </button>
