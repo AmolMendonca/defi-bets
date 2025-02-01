@@ -4,8 +4,6 @@ const Web3 = require("web3");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 
-// ============ CONFIGURATION AND SETUP ============
-
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -29,13 +27,11 @@ const bettingContract = new web3.eth.Contract(contractABI, contractAddress);
 const account = web3.eth.accounts.privateKeyToAccount(process.env.PRIVATE_KEY);
 web3.eth.accounts.wallet.add(account);
 
-// ============ HELPER FUNCTIONS ============
-
 /**
- * Signs and sends a transaction to the network
- * @param {Object} tx - Web3 transaction object
- * @param {string} value - Amount of ETH to send (in wei)
- * @returns {Promise} Transaction receipt
+ Signs and sends a transaction to the network
+ Web3 transaction object
+ Amount of ETH to send (in wei)
+ Transaction receipt
  */
 async function signAndSendTransaction(tx, value = "0") {
     try {
@@ -64,43 +60,33 @@ async function signAndSendTransaction(tx, value = "0") {
     }
 }
 
-/**
- * Converts ETH amount to Wei
- * @param {string} amount - Amount in ETH
- * @returns {string} Amount in Wei
- */
 function toWei(amount) {
     return web3.utils.toWei(amount.toString(), "ether");
 }
 
-/**
- * Converts Wei amount to ETH
- * @param {string} amount - Amount in Wei
- * @returns {string} Amount in ETH
- */
 function fromWei(amount) {
     return web3.utils.fromWei(amount.toString(), "ether");
 }
 
-// ============ API ENDPOINTS ============
+// api type shi
 
 /**
- * Create a new bet with optional insurance
- * Required body params:
- * - participant: Ethereum address
- * - amount: Amount in ETH
- * - insuranceOpted: boolean
+create a new bet with optional insurance
+reqs for this:
+participant: eth address
+amount: Amount in ETH
+insuranceOpted: y/n (not the other kinda yn)
  */
+
 app.post("/create-bet", async (req, res) => {
     try {
         const { participant, amount, insuranceOpted } = req.body;
         const value = toWei(amount);
 
-        // If insurance is opted, handle insurance premium first
         if (insuranceOpted) {
             const premium = (Number(value) * 5) / 100; // 5% premium
             
-            // Approve insurance token spending
+            // app insurance token spending
             const approveTx = insuranceTokenContract.methods.approve(
                 contractAddress, 
                 premium.toString()
@@ -108,7 +94,6 @@ app.post("/create-bet", async (req, res) => {
             await signAndSendTransaction(approveTx);
         }
 
-        // Create bet transaction
         const tx = bettingContract.methods.createBet(participant, insuranceOpted);
         const receipt = await signAndSendTransaction(tx, value);
         
@@ -122,12 +107,7 @@ app.post("/create-bet", async (req, res) => {
     }
 });
 
-/**
- * Join an existing bet
- * Required body params:
- * - betId: Bet identifier
- * - amount: Amount in ETH (must match bet amount)
- */
+
 app.post("/join-bet", async (req, res) => {
     try {
         const { betId, amount } = req.body;
@@ -142,12 +122,7 @@ app.post("/join-bet", async (req, res) => {
     }
 });
 
-/**
- * Confirm winner of a bet
- * Required body params:
- * - betId: Bet identifier
- * - winner: Winner's Ethereum address
- */
+
 app.post("/confirm-winner", async (req, res) => {
     try {
         const { betId, winner } = req.body;
@@ -160,11 +135,7 @@ app.post("/confirm-winner", async (req, res) => {
     }
 });
 
-/**
- * Initiate a dispute for a bet
- * Required body params:
- * - betId: Bet identifier
- */
+
 app.post("/dispute-bet", async (req, res) => {
     try {
         const { betId } = req.body;
@@ -177,12 +148,7 @@ app.post("/dispute-bet", async (req, res) => {
     }
 });
 
-/**
- * Resolve a disputed bet (arbitrator only)
- * Required body params:
- * - betId: Bet identifier
- * - winner: Winner's Ethereum address
- */
+
 app.post("/resolve-dispute", async (req, res) => {
     try {
         const { betId, winner } = req.body;
@@ -195,11 +161,7 @@ app.post("/resolve-dispute", async (req, res) => {
     }
 });
 
-/**
- * Claim insurance for a bet
- * Required body params:
- * - betId: Bet identifier
- */
+
 app.post("/claim-insurance", async (req, res) => {
     try {
         const { betId } = req.body;
@@ -212,11 +174,7 @@ app.post("/claim-insurance", async (req, res) => {
     }
 });
 
-/**
- * Cancel a bet (creator only, after 24 hours)
- * Required body params:
- * - betId: Bet identifier
- */
+
 app.post("/cancel-bet", async (req, res) => {
     try {
         const { betId } = req.body;
@@ -229,11 +187,6 @@ app.post("/cancel-bet", async (req, res) => {
     }
 });
 
-/**
- * Get detailed information about a bet
- * Required params:
- * - betId: Bet identifier
- */
 app.get("/bet/:betId", async (req, res) => {
     try {
         const betId = req.params.betId;

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IAaveLendingPool.sol"; // Aave lending pool interface for deposit and withdrawal functions
+import "./interfaces/IAaveLendingPool.sol"; // Aave lending pool interface for deposit and withdrawal functions
 
 // REQUIRES: The contract needs valid external dependencies such as Aave lending pool, deposit token, and insurance token.
 // MODIFIES: The state of bets, insurance premiums, and user funds through various functions.
@@ -64,7 +64,7 @@ contract BettingWithInsuranceAndYield {
     // sets key external dependencies and addresses the contract will interact or communicate with
 
     constructor(
-        address _lendingPool, // aave lending pool
+        address _lendingPool,
         address _depositToken,
         address _insuranceToken,
         address _insuranceFund,
@@ -75,6 +75,9 @@ contract BettingWithInsuranceAndYield {
         insuranceToken = IERC20(_insuranceToken);
         insuranceFund = _insuranceFund;
         arbitrator = _arbitrator;
+
+        // Approve max amount for lending pool
+        depositToken.approve(_lendingPool, type(uint256).max);
     }
 
     // Modifiers for role-based access control
@@ -107,20 +110,18 @@ contract BettingWithInsuranceAndYield {
 
         uint256 amount = msg.value;
 
-        // Approve and deposit funds into Aave
-        depositToken.approve(address(lendingPool), amount);
+        // Deposit into Aave (approval is already done in constructor)
         lendingPool.deposit(address(depositToken), amount, address(this), 0);
 
         // Handle optional insurance
         if (_insuranceOpted) {
-            uint256 premium = (amount * 5) / 100; // 5% premium (adjustable as needed)
+            uint256 premium = (amount * 5) / 100; // 5% premium
             require(
                 insuranceToken.transferFrom(msg.sender, insuranceFund, premium),
                 "Insurance premium transfer failed"
             );
         }
 
-        // Create and store the bet
         bets[betCounter] = Bet({
             creator: msg.sender,
             participant: _participant,
@@ -139,6 +140,7 @@ contract BettingWithInsuranceAndYield {
         betCounter++;
     }
 
+
     /**
      * @dev Allows the participant to join the bet and match the creator's stake.
      * @param _betId The ID of the bet being joined
@@ -147,6 +149,9 @@ contract BettingWithInsuranceAndYield {
         Bet storage bet = bets[_betId];
         require(msg.value == bet.amount, "Bet amount mismatch");
         require(!bet.resolved, "Bet already resolved");
+
+        // Deposit the matched amount into Aave
+        lendingPool.deposit(address(depositToken), msg.value, address(this), 0);
 
         emit ParticipantJoined(_betId, msg.sender);
     }
