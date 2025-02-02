@@ -12,7 +12,6 @@ import login from "./routes/login.js";
 import session from "express-session";
 import mongoose from "mongoose";
 
-
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -157,7 +156,7 @@ insuranceOpted: y/n (not the other kinda yn)
 
 app.post("/create-bet", async (req, res) => {
   try {
-    const { participant, amount, insuranceOpted } = req.body;
+    const { bet_title, bet_terms, creator, amount, owner_insurance_opted, created_at } = req.body;
 
     // Access the underlying MongoDB driver
     const db = mongoose.connection.db;
@@ -165,10 +164,12 @@ app.post("/create-bet", async (req, res) => {
 
     // Insert the bet as a simple object
     const result = await betsCollection.insertOne({
-      participant,
+      bet_title,
+      bet_terms,
+      creator,
       amount,
-      insuranceOpted,
-      createdAt: new Date(),
+      owner_insurance_opted,
+      created_at,
     });
 
     res.json({

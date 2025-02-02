@@ -29,6 +29,9 @@ router.post("/create-bet", async (req, res) => {
     if (!creator) {
       return res.status(401).json({ error: "No wallet connected" });
     }
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Invalid amount" });
+    }
 
     // Create and store bet in MongoDB
     const bet = new Bet({

@@ -1,8 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-const { ALCHEMY_URLALCHEMY_URL, PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env;
-
+const { ALCHEMY_URL, PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env;
 
 module.exports = {
   solidity: {
@@ -20,7 +19,7 @@ module.exports = {
   },
   networks: {
     sepolia: {
-      url: ALCHEMY_URLALCHEMY_URL,
+      url: ALCHEMY_URL,
       accounts: [PRIVATE_KEY],
     },
     hardhat: {
