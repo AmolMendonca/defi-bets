@@ -1,6 +1,6 @@
 // routes/create_bet.js
-import express from 'express';
-import mongoose from 'mongoose';
+import express from "express";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -14,10 +14,10 @@ const betSchema = new mongoose.Schema({
   amount: Number,
   created_at: { type: Date, default: Date.now }, // Auto-set creation time
   owner_insurance_opted: Boolean,
-  participant_insurance_opted: Boolean
+  participant_insurance_opted: Boolean,
 });
 
-const Bet = mongoose.model('Bet', betSchema);
+const Bet = mongoose.model("Bet", betSchema);
 
 router.post("/join-bet", async (req, res) => {
   try {
@@ -30,31 +30,30 @@ router.post("/join-bet", async (req, res) => {
     }
 
     if (!mongoose.Types.ObjectId.isValid(betid)) {
-        return res.status(400).json({ error: "Invalid Bet ID" });
-      }
+      return res.status(400).json({ error: "Invalid Bet ID" });
+    }
 
     const updatedBet = await Bet.findOneAndUpdate(
-    { _id: betid, participant: "TBD" }, // Ensure no one has joined before
-    { 
+      { _id: betid, participant: "TBD" }, // Ensure no one has joined before
+      {
         participant,
-        participant_insurance_opted
-    },
-    { new: true } // Return the updated document
+        participant_insurance_opted,
+      },
+      { new: true } // Return the updated document
     );
 
     if (!updatedBet) {
-    return res.status(404).json({ error: "Bet not found or already joined" });
+      return res.status(404).json({ error: "Bet not found or already joined" });
     }
 
     res.json({
-    success: true,
-    message: "Bet joined successfully",
-    bet: updatedBet
+      success: true,
+      message: "Bet joined successfully",
+      bet: updatedBet,
     });
-
-} catch (error) {
+  } catch (error) {
     res.status(500).json({ error: error.message });
-}
+  }
 });
 
 export default router;
