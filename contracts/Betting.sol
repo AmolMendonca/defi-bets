@@ -67,7 +67,7 @@ contract BettingWithInsuranceAndYield {
         _;
     }
 
-function createBet(address _participant, bool _creatorInsuranceOpted, bool _participantInsuranceOpted) public payable {
+    function createBet(address _participant, bool _creatorInsuranceOpted, bool _participantInsuranceOpted) public payable {
         require(msg.value > 0, "Bet amount must be greater than 0");
         require(_participant != address(0), "Participant address cannot be zero");
         require(_participant != msg.sender, "Creator cannot be the participant");
