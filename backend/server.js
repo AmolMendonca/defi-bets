@@ -6,10 +6,34 @@ import bodyParser from "body-parser";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import createBetRoute from './routes/create_bets.js';
+import joinBetRoute from './routes/join_bets.js';
+import login from './routes/login.js';
+import session from "express-session";
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.json());
+app.use(
+    session({
+      secret: "hackathon-secret", 
+      resave: false,
+      saveUninitialized: true,
+      cookie: { secure: false }, 
+    })
+  );
+
+const MONGO_URI = process.env.MONGO_URI
+
+mongoose
+  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("Connected to MongoDB"))
+  .catch(err => console.error("MongoDB Connection Error:", err));
+
+app.use("/api", createBetRoute);
+app.use("/api", joinBetRoute);
+app.use("/api", login);
 
 // Web3 setup
 const web3 = new Web3(
