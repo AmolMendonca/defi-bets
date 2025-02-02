@@ -13,17 +13,19 @@ const betSchema = new mongoose.Schema({
   participant: { type: String, default: "TBD" }, // Initially unknown
   amount: Number,
   created_at: { type: Date, default: Date.now }, // Auto-set creation time
-  owner_insurance_opted: Boolean
+  owner_insurance_opted: Boolean,
+  participant_insurance_opted: Boolean
 });
 
-const Bet = mongoose.model('Bet', betSchema);
+const Bet = mongoose.models.Bet || mongoose.model('Bet', betSchema);
 
 router.post("/create-bet", async (req, res) => {
   try {
     const { amount, owner_insurance_opted, betTitle, betTerms } = req.body;
 
     // Get creator from session
-    const creator = "0x562A86127c3CD49864cbfeF6944C5A384c478E26";
+    // const creator = "0x562A86127c3CD49864cbfeF6944C5A384c478E26";
+    const creator = req.session.walletAddress;
     if (!creator) {
       return res.status(401).json({ error: "No wallet connected" });
     }
