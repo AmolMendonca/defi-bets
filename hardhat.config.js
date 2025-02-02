@@ -3,6 +3,7 @@ require("dotenv").config();
 
 const { ALCHEMY_URL, PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env;
 
+
 module.exports = {
   solidity: "0.8.28",
   networks: {
@@ -13,7 +14,7 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
-      sepolia: ETHERSCAN_API_KEY
-    }
-  }
+      sepolia: ETHERSCAN_API_KEY,
+    },
+  },
 };
