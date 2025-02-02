@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ArrowRight, Sparkles, Shield, Users, Unplug, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 
 const LandingPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -8,13 +9,14 @@ const LandingPage = () => {
   const [walletConnected, setWalletConnected] = useState(false);
   const [userAddress, setUserAddress] = useState('');
   const [connectionError, setConnectionError] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState('idle');
   const [userDetails, setUserDetails] = useState(null);
-  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     name: '',
     email: ''
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const savedUserData = localStorage.getItem('userData');
@@ -28,63 +30,54 @@ const LandingPage = () => {
         y: e.clientY,
       });
     };
+    
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
   useEffect(() => {
-    if (window.ethereum) {
-      checkExistingConnection();
-      
-      const handleAccountsChanged = (accounts) => {
-        if (accounts.length > 0) {
-          handleConnect(accounts[0]);
-        } else {
-          disconnectWallet();
-        }
-      };
+    const checkWallet = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        console.log('MetaMask is installed!');
+        await checkExistingConnection();
+      } else {
+        console.log('MetaMask is not installed');
+        setConnectionError('MetaMask is not installed. Please install MetaMask to continue.');
+      }
+    };
 
-      const handleChainChanged = () => {
-        window.location.reload();
-      };
-
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
-
-      return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
-      };
-    }
+    checkWallet();
   }, []);
 
   const checkExistingConnection = async () => {
-    if (!window.ethereum) {
-      setConnectionError('MetaMask not found. Please install MetaMask.');
-      return;
-    }
-
     try {
       const accounts = await window.ethereum.request({ method: 'eth_accounts' });
       if (accounts.length > 0) {
         handleConnect(accounts[0]);
       }
     } catch (error) {
-      console.error('Error checking connection:', error);
+      console.error('Error checking existing connection:', error);
+      setConnectionError('Failed to check wallet connection. Please try again.');
     }
   };
 
   const handleConnect = (address) => {
+    console.log('Connected with address:', address);
     setWalletConnected(true);
     setUserAddress(address);
     setConnectionError('');
+    setConnectionStatus('connected');
     localStorage.setItem('walletAddress', address);
   };
 
   const connectWallet = async () => {
+    console.log('Attempting to connect wallet...');
+    setConnectionStatus('connecting');
     setConnectionError('');
-    if (!window.ethereum) {
-      setConnectionError('MetaMask not found. Please install MetaMask.');
+
+    if (typeof window.ethereum === 'undefined') {
+      setConnectionError('MetaMask is not installed. Please install MetaMask to continue.');
+      setConnectionStatus('error');
       return;
     }
 
@@ -92,49 +85,50 @@ const LandingPage = () => {
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts'
       });
+      
+      console.log('Received accounts:', accounts);
       if (accounts.length > 0) {
         handleConnect(accounts[0]);
       }
     } catch (error) {
-      let errorMessage = 'Failed to connect wallet';
+      console.error('Wallet connection error:', error);
+      let errorMessage = 'Failed to connect wallet. Please try again.';
+      
       if (error.code === 4001) {
-        errorMessage = 'Connection rejected. Please try again.';
+        errorMessage = 'You rejected the connection request. Please try again.';
       } else if (error.code === -32002) {
-        errorMessage = 'Connection pending. Please check MetaMask.';
+        errorMessage = 'Connection request already pending. Please check MetaMask.';
       }
+      
       setConnectionError(errorMessage);
+      setConnectionStatus('error');
     }
   };
 
-  const disconnectWallet = async () => {
-    try {
-      setWalletConnected(false);
-      setUserAddress('');
-      setUserDetails(null);
-      localStorage.removeItem('walletAddress');
-      localStorage.removeItem('userData');
-    } catch (error) {
-      console.error('Failed to disconnect wallet:', error);
-    }
+  const disconnectWallet = () => {
+    setWalletConnected(false);
+    setUserAddress('');
+    setUserDetails(null);
+    localStorage.removeItem('walletAddress');
+    localStorage.removeItem('userData');
   };
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    
     const userData = {
       address: userAddress,
       name: formData.name,
       email: formData.email,
       timestamp: new Date().toISOString()
     };
-
     localStorage.setItem('userData', JSON.stringify(userData));
     setUserDetails(userData);
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    navigate(`/search?query=${encodeURIComponent(searchQuery)}`);
+    // Handle search here
+    console.log('Search query:', searchQuery);
   };
 
   if (!walletConnected) {
@@ -144,19 +138,34 @@ const LandingPage = () => {
           <div className="mb-6">
             <Sparkles className="text-purple-500 w-12 h-12 mb-4" />
             <h1 className="text-3xl font-bold text-purple-900">Connect Wallet</h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-4">
               To access the features of the application, please connect your Ethereum wallet using MetaMask.
             </p>
           </div>
+          
           <button
             onClick={connectWallet}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center"
+            disabled={connectionStatus === 'connecting'}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Shield className="w-5 h-5 mr-2" />
-            Connect Wallet
+            {connectionStatus === 'connecting' ? 'Connecting...' : 'Connect Wallet'}
           </button>
+          
           {connectionError && (
-            <p className="text-red-500 text-sm mt-4">{connectionError}</p>
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{connectionError}</p>
+            </div>
+          )}
+          
+          {!window.ethereum && (
+            <div className="mt-4 text-sm text-gray-600">
+              <p>MetaMask not detected. Please:</p>
+              <ol className="list-decimal ml-4 mt-2">
+                <li>Install MetaMask from <a href="https://metamask.io" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-700">metamask.io</a></li>
+                <li>Refresh this page after installation</li>
+              </ol>
+            </div>
           )}
         </div>
       </div>
@@ -222,14 +231,20 @@ const LandingPage = () => {
         }}
       />
 
-      {/* Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 px-4">
+    <div className="fixed top-0 left-0 right-0 z-50 px-4">
         <nav className="max-w-7xl mx-auto my-4 px-6 py-4 flex justify-between items-center rounded-xl bg-white/70 backdrop-blur-md shadow-lg border border-purple-100">
           <div className="text-xl font-bold text-purple-900 flex items-center gap-2">
             <Sparkles className="text-purple-500" />
             Seiyuko
           </div>
-          <div className="space-x-4">
+          <div className="flex items-center space-x-4">
+            <button 
+              onClick={() => { window.location.href = '/documentation' }}
+              className="px-4 py-2 bg-white hover:bg-purple-50 text-purple-600 font-medium rounded-lg transition-colors flex items-center border border-purple-200"
+            >
+              <FileText className="w-5 h-5 mr-2" />
+              Docs
+            </button>
             <button 
               onClick={disconnectWallet}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center"
@@ -247,7 +262,8 @@ const LandingPage = () => {
           Bet Locally with Friends.{' '}
           <span className="bg-gradient-to-r from-purple-600 to-purple-500 text-transparent bg-clip-text">
             Win Globally
-          </span>{' '}with Ethereum.
+          </span>{' '}
+          with Ethereum.
         </h1>
         
         <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
