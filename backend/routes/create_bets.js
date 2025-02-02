@@ -1,6 +1,6 @@
 // routes/create_bet.js
-import express from 'express';
-import mongoose from 'mongoose';
+import express from "express";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -35,9 +35,9 @@ router.post("/create-bet", async (req, res) => {
       bet_title: betTitle,
       bet_terms: betTerms,
       creator: creator,
-      participant: "TBD",  // Will be filled later when participant joins
-      amount: amount,  // Store as normal number (assumed to be in ETH)
-      owner_insurance_opted: owner_insurance_opted
+      participant: "TBD", // Will be filled later when participant joins
+      amount: amount, // Store as normal number (assumed to be in ETH)
+      owner_insurance_opted: owner_insurance_opted,
     });
 
     await bet.save();
@@ -46,9 +46,8 @@ router.post("/create-bet", async (req, res) => {
       success: true,
       message: "Bet created successfully and waiting for a participant",
       betId: bet._id, // Auto-generated MongoDB bet ID
-      bet
+      bet,
     });
-
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
