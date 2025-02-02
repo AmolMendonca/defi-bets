@@ -279,6 +279,7 @@ const LandingPage = () => {
             <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform w-5 h-5" />
           </button>
           <button 
+            onClick={() => navigate('/listing')}
             className="group px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 flex items-center transition-all border border-purple-200 shadow-md hover:shadow-lg"
           >
             Join Bet
