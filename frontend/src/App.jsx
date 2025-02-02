@@ -15,6 +15,7 @@ function App() {
         <Route path="/create-bet" element={<CreateBet />} />
         <Route path="/bet/:id" element={<BetDetails />} />
         <Route path="/documentation" element={<Documentation />} />
+        <Route path="/listing" element={<BetListingPage />} />
       </Routes>
     </Router>
   );

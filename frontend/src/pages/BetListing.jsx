@@ -1,24 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Lock, 
-  Globe, 
-  Info, 
-  Search, 
-  ArrowRight, 
-  Shield, 
+import React, { useState, useEffect } from "react";
+import {
+  Lock,
+  Globe,
+  Info,
+  Search,
+  ArrowRight,
+  Shield,
   Sparkles,
   Clock,
-  Coins,
-  Users
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+  Users,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const BetListingPage = () => {
   const navigate = useNavigate();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [passkey, setPasskey] = useState('');
+  const [passkey, setPasskey] = useState("");
   const [showPasskeyInput, setShowPasskeyInput] = useState(false);
   const [selectedBet, setSelectedBet] = useState(null);
+
+  // New: State for bets, loading, and error
+  const [bets, setBets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // Track mouse position for gradient effect
   useEffect(() => {
@@ -26,11 +30,35 @@ const BetListingPage = () => {
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Mock data - would come from your API
+  // 2. Fetch bets from your API on mount
+  useEffect(() => {
+    async function fetchBets() {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await fetch("http://localhost:5001/api/bets");
+        // ^ Adjust URL if your server runs on a different port or domain
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        setBets(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchBets();
+  }, []);
+
+  // Mock data (REMOVE or COMMENT OUT if you want actual data only)
+  /*
   const bets = [
     {
       id: 1,
@@ -53,27 +81,27 @@ const BetListingPage = () => {
       participants: 8
     },
   ];
+  */
 
+  // 3. Handle joining bet
   const handleJoinBet = (bet) => {
     if (bet.isPrivate) {
       setSelectedBet(bet);
       setShowPasskeyInput(true);
     } else {
-      navigate(`/bet/${bet.id}`);
+      navigate(`/bet/${bet._id || bet.id}`);
     }
   };
 
-  // Rest of your component remains the same...
   return (
-    <div 
+    <div
       className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-slate-100 relative overflow-y-auto pt-20 px-4 pb-20"
       onMouseMove={(e) => {
         setMousePosition({ x: e.clientX, y: e.clientY });
       }}
     >
-      {/* Rest of your JSX remains exactly the same */}
       <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(120,87,255,0.15)_1.5px,_transparent_1.5px)] bg-[length:24px_24px]"></div>
-      <div 
+      <div
         className="pointer-events-none fixed inset-0 z-30 transition-opacity"
         style={{
           background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(139, 92, 246, 0.15), transparent 40%)`,
@@ -84,8 +112,12 @@ const BetListingPage = () => {
         {/* Header Section */}
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-purple-900 mb-2">Available Bets</h1>
-            <p className="text-gray-600">Join existing bets or find private games</p>
+            <h1 className="text-3xl font-bold text-purple-900 mb-2">
+              Available Bets
+            </h1>
+            <p className="text-gray-600">
+              Join existing bets or find private games
+            </p>
           </div>
 
           {/* Info Cards */}
@@ -101,9 +133,10 @@ const BetListingPage = () => {
                   Yield Generation
                 </h3>
                 <p className="text-sm text-gray-600">
-                  All staked funds are automatically deposited into Aave's lending protocol, 
-                  generating yield until the bet is resolved. This earned interest is 
-                  distributed proportionally to participants.
+                  All staked funds are automatically deposited into Aave's
+                  lending protocol, generating yield until the bet is resolved.
+                  This earned interest is distributed proportionally to
+                  participants.
                 </p>
               </div>
             </div>
@@ -119,9 +152,9 @@ const BetListingPage = () => {
                   Bet Insurance
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Optional 5% insurance fee protects your stake. If you lose the bet,
-                  you'll receive back 90% of your original stake. Insurance fees go to
-                  the protocol's coverage pool.
+                  Optional 5% insurance fee protects your stake. If you lose the
+                  bet, you'll receive back 90% of your original stake. Insurance
+                  fees go to the protocol's coverage pool.
                 </p>
               </div>
             </div>
@@ -136,33 +169,42 @@ const BetListingPage = () => {
               placeholder="Search bets..."
               className="w-full px-4 py-3 pl-12 rounded-xl border border-purple-100 focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 bg-white/50"
             />
-            <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
+            <Search
+              className="absolute left-4 top-3.5 text-gray-400"
+              size={20}
+            />
           </div>
         </div>
+
+        {/* 4. Show Loading or Error */}
+        {loading && <p className="text-gray-600 mb-4">Loading bets...</p>}
+        {error && <p className="text-red-600 mb-4">Error: {error}</p>}
 
         {/* Bet Listings */}
         <div className="space-y-4">
           {bets.map((bet) => (
-            <div 
-              key={bet.id}
+            <div
+              key={bet._id || bet.id}
               className="bg-white/80 backdrop-blur-md shadow-lg border border-purple-100 rounded-xl p-6 transition-all hover:shadow-xl"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h2 className="text-lg font-semibold text-purple-900">
-                      {bet.title}
+                      {bet.bet_title}
                     </h2>
-                    {bet.isPrivate ? (
+                    {bet.private ? (
                       <Lock className="text-purple-400" size={16} />
                     ) : (
                       <Globe className="text-purple-400" size={16} />
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">Created by {bet.creator}</p>
+                  <p className="text-sm text-gray-500">
+                    Created by {bet.creator}
+                  </p>
                 </div>
                 <span className="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-sm font-medium">
-                  {bet.amount}
+                  {bet.amount || "0 ETH"}
                 </span>
               </div>
 
@@ -170,13 +212,14 @@ const BetListingPage = () => {
                 <div className="flex gap-6">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Clock size={16} />
-                    {bet.timeRemaining}
+                    {/* If you want a timeRemaining, you may need to calculate it from bet.start/bet.end */}
+                    {bet.end || "N/A"}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Users size={16} />
-                    {bet.participants} participants
+                    <Users size={16} />2 participants
                   </div>
-                  {bet.hasInsurance && (
+                  {/* If there's an insurance flag or similar in your DB, adapt accordingly */}
+                  {bet.owner_insurance_opted && (
                     <div className="flex items-center gap-2 text-sm text-purple-600">
                       <Shield size={16} />
                       Insured
@@ -189,7 +232,10 @@ const BetListingPage = () => {
                   className="group px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-all"
                 >
                   Join Bet
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={16} />
+                  <ArrowRight
+                    className="group-hover:translate-x-1 transition-transform"
+                    size={16}
+                  />
                 </button>
               </div>
             </div>
@@ -218,7 +264,7 @@ const BetListingPage = () => {
                 <button
                   onClick={() => {
                     setShowPasskeyInput(false);
-                    setPasskey('');
+                    setPasskey("");
                   }}
                   className="flex-1 px-4 py-2 border border-purple-200 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
                 >
@@ -227,10 +273,10 @@ const BetListingPage = () => {
                 <button
                   onClick={() => {
                     if (selectedBet) {
-                      navigate(`/bet/${selectedBet.id}`);
+                      navigate(`/bet/${selectedBet._id || selectedBet.id}`);
                     }
                     setShowPasskeyInput(false);
-                    setPasskey('');
+                    setPasskey("");
                   }}
                   className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >

@@ -6,9 +6,9 @@ import bodyParser from "body-parser";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import createBetRoute from './routes/create_bets.js';
-import joinBetRoute from './routes/join_bets.js';
-import login from './routes/login.js';
+import createBetRoute from "./routes/create_bets.js";
+import joinBetRoute from "./routes/join_bets.js";
+import login from "./routes/login.js";
 import session from "express-session";
 import mongoose from "mongoose";
 
@@ -17,20 +17,22 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(
-    session({
-      secret: "hackathon-secret", 
-      resave: false,
-      saveUninitialized: true,
-      cookie: { secure: false }, 
-    })
-  );
+  session({
+    secret: "hackathon-secret",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false },
+  })
+);
 
-const MONGO_URI = process.env.MONGO_URI
+
+const MONGO_URI = process.env.MONGO_URI;
+
 
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.error("MongoDB Connection Error:", err));
+  .catch((err) => console.error("MongoDB Connection Error:", err));
 
 app.use("/api", createBetRoute);
 app.use("/api", joinBetRoute);
@@ -154,30 +156,30 @@ insuranceOpted: y/n (not the other kinda yn)
 
 app.post("/create-bet", async (req, res) => {
   try {
-    const { participant, amount, insuranceOpted } = req.body;
-    const value = toWei(amount);
+    const { bet_title, bet_terms, creator, amount, owner_insurance_opted, created_at } = req.body;
 
-    if (insuranceOpted) {
-      const premium = (Number(value) * 5) / 100; // 5% premium
+    // Access the underlying MongoDB driver
+    const db = mongoose.connection.db;
+    const betsCollection = db.collection("bets");
 
-      // app insurance token spending
-      const approveTx = insuranceTokenContract.methods.approve(
-        contractAddress,
-        premium.toString()
-      );
-      await signAndSendTransaction(approveTx);
-    }
-
-    const tx = bettingContract.methods.createBet(participant, insuranceOpted);
-    const receipt = await signAndSendTransaction(tx, value);
+    // Insert the bet as a simple object
+    const result = await betsCollection.insertOne({
+      bet_title,
+      bet_terms,
+      creator,
+      amount,
+      owner_insurance_opted,
+      created_at,
+    });
 
     res.json({
       success: true,
-      betId: receipt.events.BetCreated.returnValues.betId,
-      receipt,
+      message: "Bet created in DB (no contract call).",
+      bet: result.ops[0], // result.ops is the array of inserted documents
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error creating bet:", error);
+    res.status(500).json({ error: "Failed to create bet" });
   }
 });
 
@@ -254,6 +256,56 @@ app.post("/cancel-bet", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+app.get("/bet/:betId", async (req, res) => {
+  try {
+    const betId = req.params.betId;
+    const bet = await bettingContract.methods.bets(betId).call();
+
+    // Format the response
+    const formattedBet = {
+      id: betId,
+      creator: bet.creator,
+      participant: bet.participant,
+      amount: fromWei(bet.amount),
+      resolved: bet.resolved,
+      winner: bet.winner,
+      createdAt: new Date(bet.createdAt * 1000).toISOString(),
+      disputed: bet.disputed,
+      creatorConfirmed: bet.creatorConfirmed,
+      participantConfirmed: bet.participantConfirmed,
+      insuranceOpted: bet.insuranceOpted,
+      insuranceClaimed: bet.insuranceClaimed,
+    };
+
+    res.json(formattedBet);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/bets", async (req, res) => {
+  try {
+    // Access the raw MongoDB driver via mongoose.connection.db
+    const db = mongoose.connection.db;
+
+    // Grab the "bets" collection
+    const betsCollection = db.collection("bets");
+
+    // Retrieve all documents in the "bets" collection
+    const bets = await betsCollection.find({}).toArray();
+
+    console.log(bets)
+
+    // Return them as JSON
+    res.json(bets);
+  } catch (error) {
+    console.error("Error retrieving bets:", error);
+    res.status(500).json({ error: "Unable to retrieve bets" });
+  }
+});
+
 
 app.get("/bet/:betId", async (req, res) => {
   try {
