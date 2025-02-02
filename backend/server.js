@@ -6,30 +6,34 @@ import bodyParser from "body-parser";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import createBetRoute from './routes/create_bets.js';
-import joinBetRoute from './routes/join_bets.js';
-import login from './routes/login.js';
+import createBetRoute from "./routes/create_bets.js";
+import joinBetRoute from "./routes/join_bets.js";
+import login from "./routes/login.js";
 import session from "express-session";
+import mongoose from "mongoose";
+
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(
-    session({
-      secret: "hackathon-secret", 
-      resave: false,
-      saveUninitialized: true,
-      cookie: { secure: false }, 
-    })
-  );
+  session({
+    secret: "hackathon-secret",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false },
+  })
+);
 
-const MONGO_URI = process.env.MONGO_URI
+
+const MONGO_URI = process.env.MONGO_URI;
+
 
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.error("MongoDB Connection Error:", err));
+  .catch((err) => console.error("MongoDB Connection Error:", err));
 
 app.use("/api", createBetRoute);
 app.use("/api", joinBetRoute);
@@ -254,6 +258,7 @@ app.post("/cancel-bet", async (req, res) => {
   }
 });
 
+
 app.get("/bet/:betId", async (req, res) => {
   try {
     const betId = req.params.betId;
@@ -281,8 +286,54 @@ app.get("/bet/:betId", async (req, res) => {
   }
 });
 
+app.get("/api/bets", async (req, res) => {
+  try {
+    // Access the raw MongoDB driver via mongoose.connection.db
+    const db = mongoose.connection.db;
+
+    // Grab the "bets" collection
+    const betsCollection = db.collection("bets");
+
+    // Retrieve all documents in the "bets" collection
+    const bets = await betsCollection.find({}).toArray();
+
+    console.log(bets)
+
+    // Return them as JSON
+    res.json(bets);
+  } catch (error) {
+    console.error("Error retrieving bets:", error);
+    res.status(500).json({ error: "Unable to retrieve bets" });
+  }
+});
 
 
+app.get("/bet/:betId", async (req, res) => {
+  try {
+    const betId = req.params.betId;
+    const bet = await bettingContract.methods.bets(betId).call();
+
+    // Format the response
+    const formattedBet = {
+      id: betId,
+      creator: bet.creator,
+      participant: bet.participant,
+      amount: fromWei(bet.amount),
+      resolved: bet.resolved,
+      winner: bet.winner,
+      createdAt: new Date(bet.createdAt * 1000).toISOString(),
+      disputed: bet.disputed,
+      creatorConfirmed: bet.creatorConfirmed,
+      participantConfirmed: bet.participantConfirmed,
+      insuranceOpted: bet.insuranceOpted,
+      insuranceClaimed: bet.insuranceClaimed,
+    };
+
+    res.json(formattedBet);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Start server
 const PORT = process.env.PORT || 5001;
