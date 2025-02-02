@@ -134,7 +134,7 @@ const LandingPage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Searching:', searchQuery);
+    navigate(`/search?query=${encodeURIComponent(searchQuery)}`);
   };
 
   if (!walletConnected) {
