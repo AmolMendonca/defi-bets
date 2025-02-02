@@ -10,6 +10,7 @@ import createBetRoute from './routes/create_bets.js';
 import joinBetRoute from './routes/join_bets.js';
 import login from './routes/login.js';
 import session from "express-session";
+import mongoose from "mongoose";
 
 const app = express();
 app.use(cors());
