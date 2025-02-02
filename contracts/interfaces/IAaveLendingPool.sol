@@ -7,7 +7,7 @@ interface IAaveLendingPool {
         uint256 amount,
         address onBehalfOf,
         uint16 referralCode
-    ) external;
+    ) external payable;
 
     function withdraw(
         address asset,

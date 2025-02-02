@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Shield, Clock, Users, AlertCircle, ArrowRight, Coins } from 'lucide-react';
+import { Shield, Clock, Users, AlertCircle, ArrowRight, Coins, Info, Check } from 'lucide-react';
 
 const BetDetailsPage = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isJoining, setIsJoining] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [includeInsurance, setIncludeInsurance] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const betDetails = {
     id: "1",
@@ -15,8 +17,18 @@ const BetDetailsPage = () => {
     timeRemaining: "22 hours"
   };
 
+  const insuranceFee = 0.05; // 5% insurance fee
+  const totalAmount = includeInsurance 
+    ? parseFloat(betDetails.amount) + (parseFloat(betDetails.amount) * insuranceFee)
+    : parseFloat(betDetails.amount);
+
   const handleJoinBet = () => {
-    setIsJoining(true);
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmBet = () => {
+    setIsSubmitting(true);
+    // Handle transaction signing here
   };
 
   return (
@@ -77,37 +89,91 @@ const BetDetailsPage = () => {
             </div>
 
             <div className="flex flex-col justify-between space-y-6">
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                <h3 className="text-purple-900 font-medium mb-2 flex items-center gap-2">
-                  <Shield className="text-purple-500" size={20} />
-                  Security Guarantees
-                </h3>
-                <ul className="text-sm text-purple-800 space-y-2">
-                  <li>• Smart contract secures all funds</li>
-                  <li>• Both parties must confirm the outcome</li>
-                  <li>• Automated payout on resolution</li>
-                </ul>
-              </div>
+              {!showConfirmation ? (
+                <>
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                    <h3 className="text-purple-900 font-medium mb-2 flex items-center gap-2">
+                      <Shield className="text-purple-500" size={20} />
+                      Security Guarantees
+                    </h3>
+                    <ul className="text-sm text-purple-800 space-y-2">
+                      <li>• Smart contract secures all funds</li>
+                      <li>• Both parties must confirm the outcome</li>
+                      <li>• Automated payout on resolution</li>
+                    </ul>
+                  </div>
 
-              <div className="space-y-4">
-                <button
-                  onClick={handleJoinBet}
-                  disabled={isJoining}
-                  className="w-full group px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-                >
-                  {isJoining ? (
-                    'Connecting Wallet...'
-                  ) : (
-                    <>
-                      Join Bet
-                      <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-                    </>
-                  )}
-                </button>
-                <p className="text-center text-sm text-gray-500">
-                  You'll need {betDetails.amount} + gas fees to participate
-                </p>
-              </div>
+                  <button
+                    onClick={handleJoinBet}
+                    className="w-full group px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
+                  >
+                    Join Bet
+                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-600">Stake Amount</span>
+                      <span className="text-purple-900 font-medium">{betDetails.amount}</span>
+                    </div>
+                    
+                    {includeInsurance && (
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-600">Insurance Fee (5%)</span>
+                        <span className="text-purple-900 font-medium">
+                          {(parseFloat(betDetails.amount) * insuranceFee).toFixed(3)} ETH
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center font-medium pt-2 border-t border-purple-100">
+                      <span className="text-purple-900">Total</span>
+                      <span className="text-purple-900">{totalAmount.toFixed(3)} ETH</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 bg-white rounded-lg border border-purple-100">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <Shield className="text-purple-500" size={20} />
+                    </div>
+                    <div className="flex-grow">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <span className="block text-sm font-medium text-purple-900 mb-1">
+                            Bet Insurance
+                          </span>
+                          <span className="block text-xs text-gray-500">
+                            Protect your stake with 5% insurance fee
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={includeInsurance}
+                          onChange={(e) => setIncludeInsurance(e.target.checked)}
+                          className="rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleConfirmBet}
+                    disabled={isSubmitting}
+                    className="w-full group px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      'Signing Transaction...'
+                    ) : (
+                      <>
+                        Sign & Confirm
+                        <Check className="group-hover:scale-110 transition-transform" size={20} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
