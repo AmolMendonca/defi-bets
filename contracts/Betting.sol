@@ -2,9 +2,12 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IAaveLendingPool.sol";
+import "./interfaces/IWETH.sol";
 
-contract BettingWithInsuranceAndYield {
+contract BettingWithInsuranceAndYield is ReentrancyGuard, Ownable {
     struct Bet {
         address creator;
         address participant;
@@ -18,6 +21,7 @@ contract BettingWithInsuranceAndYield {
         bool creatorInsuranceOpted;
         bool participantInsuranceOpted;
         bool insuranceClaimed;
+        bool cancelled;
     }
 
     mapping(uint256 => Bet) public bets;
@@ -25,8 +29,14 @@ contract BettingWithInsuranceAndYield {
     IAaveLendingPool public lendingPool;
     IERC20 public depositToken;
     IERC20 public insuranceToken;
+    IWETH public weth;
     address public insuranceFund;
     address public arbitrator;
+    
+    uint256 public insurancePremiumRate = 500; // 5% = 500 basis points
+    uint256 public constant MAX_INSURANCE_PREMIUM_RATE = 1000; // 10%
+    uint256 public betExpiryPeriod = 24 hours;
+    uint256 public maxBetDuration = 30 days;
 
     event BetCreated(uint256 betId, address creator, address participant, uint256 amount, bool creatorInsuranceOpted, bool participantInsuranceOpted);
     event BetResolved(uint256 betId, address winner, uint256 payout);
@@ -40,53 +50,95 @@ contract BettingWithInsuranceAndYield {
         address _lendingPool,
         address _depositToken,
         address _insuranceToken,
+        address _weth,
         address _insuranceFund,
         address _arbitrator
     ) {
+        require(_lendingPool != address(0), "Invalid lending pool address");
+        require(_depositToken != address(0), "Invalid deposit token address");
+        require(_insuranceToken != address(0), "Invalid insurance token address");
+        require(_weth != address(0), "Invalid WETH address");
+        require(_insuranceFund != address(0), "Invalid insurance fund address");
+        require(_arbitrator != address(0), "Invalid arbitrator address");
+
         lendingPool = IAaveLendingPool(_lendingPool);
         depositToken = IERC20(_depositToken);
         insuranceToken = IERC20(_insuranceToken);
+        weth = IWETH(_weth);
         insuranceFund = _insuranceFund;
         arbitrator = _arbitrator;
-        // Approve max amount for lending pool
+        
         depositToken.approve(_lendingPool, type(uint256).max);
+        weth.approve(_lendingPool, type(uint256).max);
     }
 
     modifier onlyCreator(uint256 _betId) {
-        require(msg.sender == bets[_betId].creator, "Only the creator can perform this action");
+        require(msg.sender == bets[_betId].creator, "Only creator");
         _;
     }
 
     modifier onlyParticipant(uint256 _betId) {
-        require(msg.sender == bets[_betId].participant, "Only the participant can perform this action");
+        require(msg.sender == bets[_betId].participant, "Only participant");
         _;
     }
 
     modifier onlyArbitrator() {
-        require(msg.sender == arbitrator, "Only the arbitrator can perform this action");
+        require(msg.sender == arbitrator, "Only arbitrator");
         _;
     }
 
-    function createBet(address _participant, bool _creatorInsuranceOpted, bool _participantInsuranceOpted) public payable {
-        require(msg.value > 0, "Bet amount must be greater than 0");
-        require(_participant != address(0), "Participant address cannot be zero");
-        require(_participant != msg.sender, "Creator cannot be the participant");
+    modifier betExists(uint256 _betId) {
+        require(_betId < betCounter, "Bet doesn't exist");
+        _;
+    }
+
+    modifier betNotResolved(uint256 _betId) {
+        require(!bets[_betId].resolved, "Bet resolved");
+        require(!bets[_betId].cancelled, "Bet cancelled");
+        _;
+    }
+
+    function setArbitrator(address _arbitrator) external onlyOwner {
+        require(_arbitrator != address(0), "Invalid arbitrator");
+        arbitrator = _arbitrator;
+    }
+
+    function setInsurancePremiumRate(uint256 _rate) external onlyOwner {
+        require(_rate <= MAX_INSURANCE_PREMIUM_RATE, "Rate too high");
+        insurancePremiumRate = _rate;
+    }
+
+    function setBetExpiryPeriod(uint256 _period) external onlyOwner {
+        require(_period > 0, "Invalid period");
+        betExpiryPeriod = _period;
+    }
+
+    function createBet(
+        address _participant,
+        bool _creatorInsuranceOpted,
+        bool _participantInsuranceOpted
+    ) external payable nonReentrant {
+        require(msg.value > 0, "Zero amount");
+        require(_participant != address(0), "Invalid participant");
+        require(_participant != msg.sender, "Self betting");
 
         uint256 amount = msg.value;
 
-        // Deposit the creator's stake into Aave
-        lendingPool.deposit{value: msg.value}(address(depositToken), amount, address(this), 0);
+        // Convert ETH to WETH
+        weth.deposit{value: amount}();
 
-        // Handle creator's insurance premium
+        // Deposit the creator's stake into Aave
+        lendingPool.deposit(address(weth), amount, address(this), 0);
+
+        // Handle creator's insurance premium if opted
         if (_creatorInsuranceOpted) {
-            uint256 creatorPremium = (amount * 5) / 100; // 5% premium
+            uint256 creatorPremium = (amount * insurancePremiumRate) / 10000;
             require(
                 insuranceToken.transferFrom(msg.sender, insuranceFund, creatorPremium),
-                "Creator insurance premium transfer failed"
+                "Premium transfer failed"
             );
         }
 
-        // Note: participant's stake will be handled in joinBet
         bets[betCounter] = Bet({
             creator: msg.sender,
             participant: _participant,
@@ -99,29 +151,62 @@ contract BettingWithInsuranceAndYield {
             participantConfirmed: address(0),
             creatorInsuranceOpted: _creatorInsuranceOpted,
             participantInsuranceOpted: _participantInsuranceOpted,
-            insuranceClaimed: false
+            insuranceClaimed: false,
+            cancelled: false
         });
 
         emit BetCreated(betCounter, msg.sender, _participant, amount, _creatorInsuranceOpted, _participantInsuranceOpted);
         betCounter++;
     }
-    function joinBet(uint256 _betId) public payable onlyParticipant(_betId) {
+
+    function joinBet(uint256 _betId) 
+        external 
+        payable 
+        betExists(_betId)
+        betNotResolved(_betId)
+        onlyParticipant(_betId) 
+        nonReentrant 
+    {
         Bet storage bet = bets[_betId];
-        require(msg.value == bet.amount, "Bet amount mismatch");
-        require(!bet.resolved, "Bet already resolved");
+        require(msg.value == bet.amount, "Amount mismatch");
+        require(
+            block.timestamp <= bet.createdAt + maxBetDuration,
+            "Bet expired"
+        );
+
+        // Convert ETH to WETH
+        weth.deposit{value: msg.value}();
 
         // Deposit the matched amount into Aave
-        lendingPool.deposit(address(depositToken), msg.value, address(this), 0);
+        lendingPool.deposit(address(weth), msg.value, address(this), 0);
+
+        // Handle participant's insurance premium if opted
+        if (bet.participantInsuranceOpted) {
+            uint256 participantPremium = (msg.value * insurancePremiumRate) / 10000;
+            require(
+                insuranceToken.transferFrom(msg.sender, insuranceFund, participantPremium),
+                "Premium transfer failed"
+            );
+        }
 
         emit ParticipantJoined(_betId, msg.sender);
     }
 
-    function confirmWinner(uint256 _betId, address _winner) public {
+    function confirmWinner(uint256 _betId, address _winner) 
+        external 
+        betExists(_betId)
+        betNotResolved(_betId)
+    {
         Bet storage bet = bets[_betId];
-        require(!bet.resolved, "Bet already resolved");
-        require(!bet.disputed, "Bet is under dispute");
-        require(_winner == bet.creator || _winner == bet.participant, "Winner must be a participant");
-        require(msg.sender == bet.creator || msg.sender == bet.participant, "Only participants can confirm the winner");
+        require(!bet.disputed, "Under dispute");
+        require(
+            _winner == bet.creator || _winner == bet.participant,
+            "Invalid winner"
+        );
+        require(
+            msg.sender == bet.creator || msg.sender == bet.participant,
+            "Not a participant"
+        );
 
         if (msg.sender == bet.creator) {
             bet.creatorConfirmed = _winner;
@@ -130,67 +215,129 @@ contract BettingWithInsuranceAndYield {
         }
 
         // If both participants confirm the same winner, resolve the bet
-        if (bet.creatorConfirmed == bet.participantConfirmed && bet.creatorConfirmed != address(0)) {
-            resolveBet(_betId, _winner);
+        if (bet.creatorConfirmed == bet.participantConfirmed && 
+            bet.creatorConfirmed != address(0)) {
+            _resolveBet(_betId, _winner);
         }
     }
 
-    function disputeBet(uint256 _betId) public {
+    function disputeBet(uint256 _betId) 
+        external 
+        betExists(_betId)
+        betNotResolved(_betId)
+    {
         Bet storage bet = bets[_betId];
-        require(!bet.resolved, "Bet already resolved");
-        require(msg.sender == bet.creator || msg.sender == bet.participant, "Only participants can dispute");
-        require(!bet.disputed, "Bet is already under dispute");
+        require(
+            msg.sender == bet.creator || msg.sender == bet.participant,
+            "Not a participant"
+        );
+        require(!bet.disputed, "Already disputed");
 
         bet.disputed = true;
         emit BetDisputed(_betId);
     }
 
-    function resolveDispute(uint256 _betId, address _winner) public onlyArbitrator {
-        resolveBet(_betId, _winner);
+    function resolveDispute(uint256 _betId, address _winner) 
+        external 
+        betExists(_betId)
+        betNotResolved(_betId)
+        onlyArbitrator 
+    {
+        Bet storage bet = bets[_betId];
+        require(bet.disputed, "Not disputed");
+        require(
+            _winner == bet.creator || _winner == bet.participant,
+            "Invalid winner"
+        );
+
+        _resolveBet(_betId, _winner);
+        emit DisputeResolved(_betId, _winner);
     }
 
-    function resolveBet(uint256 _betId, address _winner) internal {
+    function _resolveBet(uint256 _betId, address _winner) internal {
         Bet storage bet = bets[_betId];
-        require(!bet.resolved, "Bet already resolved");
-
         bet.resolved = true;
         bet.winner = _winner;
 
-        uint256 totalBalance = lendingPool.withdraw(address(depositToken), type(uint256).max, address(this));
-        require(depositToken.transfer(_winner, totalBalance), "Payout transfer failed");
+        uint256 totalBalance = lendingPool.withdraw(
+            address(weth),
+            type(uint256).max,
+            address(this)
+        );
+
+        // Convert WETH back to ETH and send to winner
+        weth.withdraw(totalBalance);
+        (bool success, ) = _winner.call{value: totalBalance}("");
+        require(success, "ETH transfer failed");
 
         emit BetResolved(_betId, _winner, totalBalance);
     }
 
-    function cancelBet(uint256 _betId) public onlyCreator(_betId) {
+    function cancelBet(uint256 _betId) 
+        external 
+        betExists(_betId)
+        betNotResolved(_betId)
+        onlyCreator(_betId) 
+    {
         Bet storage bet = bets[_betId];
-        require(!bet.resolved, "Bet already resolved");
-        require(block.timestamp > bet.createdAt + 1 days, "Cannot cancel before 24 hours");
-        require(!bet.disputed, "Cannot cancel a disputed bet");
+        require(
+            block.timestamp > bet.createdAt + betExpiryPeriod,
+            "Cannot cancel yet"
+        );
+        require(!bet.disputed, "Under dispute");
 
-        uint256 totalBalance = lendingPool.withdraw(address(depositToken), type(uint256).max, address(this));
-        require(depositToken.transfer(bet.creator, totalBalance), "Refund transfer failed");
+        uint256 totalBalance = lendingPool.withdraw(
+            address(weth),
+            type(uint256).max,
+            address(this)
+        );
 
-        delete bets[_betId];
+        // Convert WETH back to ETH and return to creator
+        weth.withdraw(totalBalance);
+        (bool success, ) = bet.creator.call{value: totalBalance}("");
+        require(success, "ETH transfer failed");
+
+        bet.cancelled = true;
         emit BetCancelled(_betId);
     }
 
-    function claimInsurance(uint256 _betId) public {
+    function claimInsurance(uint256 _betId) 
+        external 
+        betExists(_betId)
+        nonReentrant 
+    {
         Bet storage bet = bets[_betId];
-        require(!bet.resolved, "Cannot claim insurance on resolved bets");
+        require(!bet.resolved && !bet.cancelled, "Bet not active");
+        require(!bet.insuranceClaimed, "Already claimed");
         
         bool isInsured = false;
-        if (msg.sender == bet.creator && bet.creatorInsuranceOpted) isInsured = true;
-        if (msg.sender == bet.participant && bet.participantInsuranceOpted) isInsured = true;
+        if (msg.sender == bet.creator && bet.creatorInsuranceOpted) {
+            isInsured = true;
+        }
+        if (msg.sender == bet.participant && bet.participantInsuranceOpted) {
+            isInsured = true;
+        }
         
-        require(isInsured, "No insurance opted for this participant");
-        require(!bet.insuranceClaimed, "Insurance already claimed");
+        require(isInsured, "Not insured");
 
         bet.insuranceClaimed = true;
         uint256 payout = bet.amount * 2; // Full refund if covered by insurance
-        require(insuranceToken.transfer(msg.sender, payout), "Insurance payout failed");
+        require(
+            insuranceToken.transfer(msg.sender, payout),
+            "Insurance payout failed"
+        );
 
         emit InsuranceClaimed(_betId, msg.sender, payout);
+    }
+
+    // Emergency withdrawal function for owner
+    function emergencyWithdraw(address _token) external onlyOwner {
+        uint256 balance = IERC20(_token).balanceOf(address(this));
+        require(balance > 0, "No balance");
+        require(
+            IERC20(_token).transfer(owner(), balance),
+            "Transfer failed"
+        );
     }
 
     receive() external payable {}
