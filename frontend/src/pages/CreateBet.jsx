@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
-import { Shield, Wallet, PenLine, Coins, AlertCircle, ArrowRight, Check } from 'lucide-react';
+import React, { useState } from "react";
+import {
+  Shield,
+  Wallet,
+  PenLine,
+  Coins,
+  AlertCircle,
+  ArrowRight,
+  Check,
+} from "lucide-react";
 
 const CreateBetPage = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [includeInsurance, setIncludeInsurance] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
-    amount: '',
+    title: "",
+    amount: "",
+    insurance: false
   });
 
   // Mock wallet address - in real app would come from wallet connection
@@ -16,28 +25,59 @@ const CreateBetPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
-  const handleCreateBet = () => {
+  // 1. Implement the create bet call
+  const handleCreateBet = async () => {
     setIsSubmitting(true);
-    // Handle transaction signing here
+
+    try {
+      // Prepare the body data to match your /create-bet endpoint
+      const bodyData = {
+        participant: walletAddress,
+        title: formData.title, // <-- Fix: assign formData.title here
+        amount: formData.amount, // in ETH (string or number)
+        insuranceOpted: includeInsurance,
+      };
+
+      // Adjust the endpoint URL if your server runs on a different port
+      const response = await fetch("http://localhost:5001/create-bet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bodyData),
+      });
+
+      const data = await response.json();
+      console.log("Bet created successfully:", data);
+
+      // Optionally clear form or show success message
+      setFormData({ title: "", amount: "" });
+    } catch (error) {
+      console.error("Error creating bet:", error);
+      alert(`Error creating bet: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const totalAmount = formData.amount 
-    ? (includeInsurance 
-      ? parseFloat(formData.amount) + (parseFloat(formData.amount) * insuranceFee)
-      : parseFloat(formData.amount)
-    ).toFixed(3)
-    : '0.000';
+  const totalAmount = formData.amount
+    ? (includeInsurance
+        ? parseFloat(formData.amount) +
+          parseFloat(formData.amount) * insuranceFee
+        : parseFloat(formData.amount)
+      ).toFixed(3)
+    : "0.000";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-slate-100 relative overflow-y-auto pt-20 px-4 pb-20">
       <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(120,87,255,0.15)_1.5px,_transparent_1.5px)] bg-[length:24px_24px]"></div>
-      <div 
+      <div
         className="pointer-events-none fixed inset-0 z-30 transition-opacity"
         style={{
           background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(139, 92, 246, 0.15), transparent 40%)`,
@@ -102,7 +142,9 @@ const CreateBetPage = () => {
                   min="0"
                   className="w-full px-4 py-2 rounded-lg border border-purple-100 focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 bg-white/50 pr-12"
                 />
-                <span className="absolute right-4 top-2 text-gray-500">ETH</span>
+                <span className="absolute right-4 top-2 text-gray-500">
+                  ETH
+                </span>
               </div>
             </div>
 
@@ -135,19 +177,22 @@ const CreateBetPage = () => {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">Base Amount</span>
                 <span className="text-purple-900 font-medium">
-                  {formData.amount || '0.000'} ETH
+                  {formData.amount || "0.000"} ETH
                 </span>
               </div>
-              
+
               {includeInsurance && (
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-600">Insurance Fee (5%)</span>
                   <span className="text-purple-900 font-medium">
-                    {formData.amount ? (parseFloat(formData.amount) * insuranceFee).toFixed(3) : '0.000'} ETH
+                    {formData.amount
+                      ? (parseFloat(formData.amount) * insuranceFee).toFixed(3)
+                      : "0.000"}{" "}
+                    ETH
                   </span>
                 </div>
               )}
-              
+
               <div className="flex justify-between items-center font-medium pt-2 border-t border-purple-100">
                 <span className="text-purple-900">Total</span>
                 <span className="text-purple-900">{totalAmount} ETH</span>
@@ -161,11 +206,14 @@ const CreateBetPage = () => {
               className="w-full group px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:hover:bg-purple-600"
             >
               {isSubmitting ? (
-                'Creating Bet...'
+                "Creating Bet..."
               ) : (
                 <>
                   Create
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                  <ArrowRight
+                    className="group-hover:translate-x-1 transition-transform"
+                    size={20}
+                  />
                 </>
               )}
             </button>

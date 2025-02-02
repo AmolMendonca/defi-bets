@@ -158,29 +158,27 @@ insuranceOpted: y/n (not the other kinda yn)
 app.post("/create-bet", async (req, res) => {
   try {
     const { participant, amount, insuranceOpted } = req.body;
-    const value = toWei(amount);
 
-    if (insuranceOpted) {
-      const premium = (Number(value) * 5) / 100; // 5% premium
+    // Access the underlying MongoDB driver
+    const db = mongoose.connection.db;
+    const betsCollection = db.collection("bets");
 
-      // app insurance token spending
-      const approveTx = insuranceTokenContract.methods.approve(
-        contractAddress,
-        premium.toString()
-      );
-      await signAndSendTransaction(approveTx);
-    }
-
-    const tx = bettingContract.methods.createBet(participant, insuranceOpted);
-    const receipt = await signAndSendTransaction(tx, value);
+    // Insert the bet as a simple object
+    const result = await betsCollection.insertOne({
+      participant,
+      amount,
+      insuranceOpted,
+      createdAt: new Date(),
+    });
 
     res.json({
       success: true,
-      betId: receipt.events.BetCreated.returnValues.betId,
-      receipt,
+      message: "Bet created in DB (no contract call).",
+      bet: result.ops[0], // result.ops is the array of inserted documents
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error creating bet:", error);
+    res.status(500).json({ error: "Failed to create bet" });
   }
 });
 
