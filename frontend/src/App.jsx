@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage'
 import CreateBet from './pages/CreateBet'
 import BetDetails from './pages/BetDetails';
 import Documentation from './pages/Documentation'
+import BetListingPage from './pages/BetListing'
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/create-bet" element={<CreateBet />} />
         <Route path="/bet/:id" element={<BetDetails />} />
         <Route path="/documentation" element={<Documentation/>}/>
+        <Route path="/listing" element={<BetListingPage/>}/>
       </Routes>
     </Router>
   )
