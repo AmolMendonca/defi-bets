@@ -1,5 +1,13 @@
 import "dotenv/config";
 import express from "express";
+import { Web3 } from "web3";
+import cors from "cors";
+import bodyParser from "body-parser";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import "dotenv/config";
+import express from "express";
 import mongoose from 'mongoose';
 import { Web3 } from "web3";
 import cors from "cors";
@@ -26,15 +34,36 @@ mongoose
 app.use("/api", createBetRoute);
 app.use("api", joinBetRoute);
 
+
 // Web3 setup
+const web3 = new Web3(`https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 const web3 = new Web3(`https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 
 // Contract setup
 // const contractABI = require("../artifacts/contracts/BettingWithInsuranceAndYield.sol/BettingWithInsuranceAndYield.json").abi;
 
+// const contractABI = require("../artifacts/contracts/BettingWithInsuranceAndYield.sol/BettingWithInsuranceAndYield.json").abi;
+
 const contractAddress = process.env.CONTRACT_ADDRESS;
 
 // Token contracts setup
+// const IERC20_ABI = require("@openzeppelin/contracts/build/contracts/IERC20.json").abi;
+
+// Load ABI files using correct paths
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const contractABI = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../artifacts/contracts/Betting.sol/BettingWithInsuranceAndYield.json"), "utf8")
+  ).abi;
+  
+  const IERC20_ABI = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json"), "utf8")
+  ).abi;
+
+const depositTokenContract = new web3.eth.Contract(IERC20_ABI, process.env.DEPOSIT_TOKEN_ADDRESS);
+const insuranceTokenContract = new web3.eth.Contract(IERC20_ABI, process.env.INSURANCE_TOKEN_ADDRESS);
 // const IERC20_ABI = require("@openzeppelin/contracts/build/contracts/IERC20.json").abi;
 
 // Load ABI files using correct paths
@@ -73,6 +102,14 @@ const insuranceTokenContract = new web3.eth.Contract(
 
 // Initialize main contract
 const bettingContract = new web3.eth.Contract(contractABI, contractAddress);
+
+if (!process.env.PRIVATE_KEY || process.env.PRIVATE_KEY.length !== 64) {
+    throw new Error("Invalid PRIVATE_KEY: Please check your .env file. It must be exactly 64 characters long and should not include '0x'.");
+}
+
+const account = web3.eth.accounts.privateKeyToAccount(
+    process.env.PRIVATE_KEY.startsWith("0x") ? process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`
+);
 
 if (!process.env.PRIVATE_KEY || process.env.PRIVATE_KEY.length !== 64) {
   throw new Error(
@@ -317,6 +354,7 @@ app.get("/bet/:betId", async (req, res) => {
 });
 
 // Start server
+const PORT = process.env.PORT || 5001;
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

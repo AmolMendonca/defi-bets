@@ -15,11 +15,16 @@ contract MockAaveLendingPool is IAaveLendingPool {
         uint256 amount,
         address onBehalfOf,
         uint16
-    ) external override {
-        require(
-            IERC20(asset).transferFrom(msg.sender, address(this), amount),
-            "Transfer failed"
-        );
+    ) external payable override {
+        if (msg.value > 0) {
+            // If ETH was sent, we need to wrap it to the deposit token
+            amount = msg.value;
+        } else {
+            require(
+                IERC20(asset).transferFrom(msg.sender, address(this), amount),
+                "Transfer failed"
+            );
+        }
         userBalances[onBehalfOf][asset] += amount;
         emit DepositMade(asset, onBehalfOf, amount);
     }
@@ -44,6 +49,8 @@ contract MockAaveLendingPool is IAaveLendingPool {
         emit WithdrawMade(asset, msg.sender, amount);
         return amount;
     }
+
+    receive() external payable {}
 
     function getBalance(address user, address asset) external view returns (uint256) {
         return userBalances[user][asset];

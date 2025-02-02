@@ -4,6 +4,7 @@ import Search from "./pages/Search";
 import CreateBet from './pages/CreateBet'
 import BetDetails from './pages/BetDetails';
 import Documentation from './pages/Documentation'
+import BetListingPage from './pages/BetListing'
 
 function App() {
   return (
