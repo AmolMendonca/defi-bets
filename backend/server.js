@@ -1,16 +1,29 @@
 import "dotenv/config";
 import express from "express";
+import mongoose from 'mongoose';
 import { Web3 } from "web3";
 import cors from "cors";
 import bodyParser from "body-parser";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import createBetRoute from './routes/create_bets.js';
+import joinBetRoute from './routes/join_bets.js';
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.json());
 
+const MONGO_URI = process.env.MONGO_URI
+
+mongoose
+  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("Connected to MongoDB"))
+  .catch(err => console.error("MongoDB Connection Error:", err));
+
+app.use("/api", createBetRoute);
+app.use("api", joinBetRoute);
 
 // Web3 setup
 const web3 = new Web3(`https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
@@ -104,7 +117,7 @@ amount: Amount in ETH
 insuranceOpted: y/n (not the other kinda yn)
  */
 
-app.post("/create-bet", async (req, res) => {
+/*app.post("/create-bet", async (req, res) => {
     try {
         const { participant, amount, insuranceOpted } = req.body;
         const value = toWei(amount);
@@ -131,7 +144,7 @@ app.post("/create-bet", async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-});
+});*/
 
 
 app.post("/join-bet", async (req, res) => {
