@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import mongoose from 'mongoose';
 import { Web3 } from "web3";
 import cors from "cors";
 import mongoose from "mongoose";
@@ -7,36 +8,26 @@ import bodyParser from "body-parser";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import createBetRoute from './routes/create_bets.js';
+import joinBetRoute from './routes/join_bets.js';
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.json());
 
-// MongoDB Connection
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://rhwang1226:seiyakuwinssparta@cluster0.d7gcw.mongodb.net/main?retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGO_URI
 
 mongoose
-  .connect(MONGODB_URI)
+  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .catch(err => console.error("MongoDB Connection Error:", err));
 
-// User Schema
-const userSchema = new mongoose.Schema({
-  address: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  email: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-  bets: [{ type: mongoose.Schema.Types.ObjectId, ref: "Bet" }],
-});
+app.use("/api", createBetRoute);
+app.use("api", joinBetRoute);
 
-const User = mongoose.model("User", userSchema);
-
-// Web3 and Contract Setup (existing code)
-const web3 = new Web3(
-  `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
-);
+// Web3 setup
+const web3 = new Web3(`https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 
 // Contract setup
 // const contractABI = require("../artifacts/contracts/BettingWithInsuranceAndYield.sol/BettingWithInsuranceAndYield.json").abi;
@@ -194,10 +185,10 @@ amount: Amount in ETH
 insuranceOpted: y/n (not the other kinda yn)
  */
 
-app.post("/create-bet", async (req, res) => {
-  try {
-    const { participant, amount, insuranceOpted } = req.body;
-    const value = toWei(amount);
+/*app.post("/create-bet", async (req, res) => {
+    try {
+        const { participant, amount, insuranceOpted } = req.body;
+        const value = toWei(amount);
 
     if (insuranceOpted) {
       const premium = (Number(value) * 5) / 100; // 5% premium
@@ -210,18 +201,19 @@ app.post("/create-bet", async (req, res) => {
       await signAndSendTransaction(approveTx);
     }
 
-    const tx = bettingContract.methods.createBet(participant, insuranceOpted);
-    const receipt = await signAndSendTransaction(tx, value);
+        const tx = bettingContract.methods.createBet(participant, insuranceOpted);
+        const receipt = await signAndSendTransaction(tx, value);
+        
+        res.json({
+            success: true,
+            betId: receipt.events.BetCreated.returnValues.betId,
+            receipt
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});*/
 
-    res.json({
-      success: true,
-      betId: receipt.events.BetCreated.returnValues.betId,
-      receipt,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 app.post("/join-bet", async (req, res) => {
   try {
