@@ -2,6 +2,56 @@
 
 > A trustless peer-to-peer betting protocol with Aave-powered escrow yield generation and insurance pool mechanics
 
+``` mermaid
+sequenceDiagram
+    participant User
+    participant FE as Frontend
+    participant RA as Risk Agent
+    participant BE as Backend
+    participant SC as Smart Contract
+    participant Aave
+    participant IP as Insurance Pool
+
+    User->>FE: Connect Wallet
+    FE->>BE: Authenticate User
+    BE->>RA: Check Risk Profile
+    RA-->>BE: Risk Assessment
+
+    Note over User,IP: Bet Creation Flow
+    User->>FE: Create Bet
+    FE->>BE: Submit Bet Details
+    BE->>RA: Risk Analysis
+    RA-->>BE: Approval/Rejection
+    BE->>SC: createBet()
+    SC->>IP: Calculate Insurance Premium
+    SC->>Aave: Deposit Funds
+    Aave-->>SC: Confirm Deposit
+    SC-->>BE: Bet Created Event
+    BE-->>FE: Update UI
+    FE-->>User: Show Bet Status
+
+    Note over User,IP: Bet Participation Flow
+    User->>FE: Join Bet
+    FE->>BE: Verify Participation
+    BE->>SC: joinBet()
+    SC->>IP: Process Insurance
+    SC->>Aave: Deposit Participant Funds
+    Aave-->>SC: Confirm Deposit
+    SC-->>BE: Participant Joined Event
+    BE-->>FE: Update UI
+    FE-->>User: Confirm Participation
+
+    Note over User,IP: Bet Resolution Flow
+    User->>FE: Confirm Winner
+    FE->>BE: Submit Result
+    BE->>SC: resolveWinner()
+    SC->>Aave: Withdraw Funds + Yield
+    Aave-->>SC: Transfer Funds
+    SC->>User: Distribute Winnings
+    SC-->>BE: Resolution Event
+    BE-->>FE: Update UI
+    FE-->>User: Show Result
+```
 ```mermaid
 graph TB
     subgraph Frontend
