@@ -2,6 +2,9 @@
 
 > A trustless peer-to-peer betting protocol with Aave-powered escrow yield generation and insurance pool mechanics
 
+Seiyaku reimagines social betting through a decentralized protocol that combines secure escrow, yield generation, and AI-powered risk management. The platform enables users to create and participate in peer-to-peer bets while their staked assets automatically generate yield through Aave lending pools. A sophisticated insurance system, backed by dynamic premiums and automated claims processing, provides protection against potential losses. The integration of an AI Risk Management Agent, built on Fetch.ai's uAgent framework, continuously monitors betting patterns and enforces responsible gaming practices, making Seiyaku not just a betting platform, but a comprehensive solution for safe, profitable, and responsible social betting.
+
+
 ``` mermaid
 sequenceDiagram
     participant User
