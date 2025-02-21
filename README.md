@@ -57,38 +57,47 @@ graph TB
     subgraph Frontend
         UI[React Frontend]
         WC[Wallet Connection]
+        RISK[Risk Management UI]
         UI --> WC
+        UI --> RISK
     end
 
     subgraph Backend
         API[Express.js API]
         W3[Web3.js Integration]
+        DB[(MongoDB)]
+        AGENT[Risk Management Agent]
         API --> W3
+        API --> DB
+        AGENT --> DB
+        API --> AGENT
     end
 
     subgraph Blockchain
-        SC[Smart Contract]
-        SEP[Sepolia Network]
-        SC --> SEP
+        SC[Smart Contracts]
+        AAVE[Aave Protocol]
+        INS[Insurance Pool]
+        
+        SC --> AAVE
+        SC --> INS
+    end
+
+    subgraph Smart Contract Components
+        BET[Betting Logic]
+        YLD[Yield Generation]
+        DISP[Dispute Resolution]
+        
+        BET --> YLD
+        BET --> DISP
     end
 
     UI --> API
     W3 --> SC
     WC --> SC
 
-    subgraph Smart Contract Components
-        BET[Betting Logic]
-        ARB[Arbitration]
-        DISP[Dispute Resolution]
-        
-        BET --> ARB
-        BET --> DISP
-    end
-
     style Frontend fill:#f9f,stroke:#333,stroke-width:4px
     style Backend fill:#bbf,stroke:#333,stroke-width:4px
-    style Blockchain fill:#bfb,stroke:#333,stroke-width:4px
-```
+    style Blockchain fill:#bfb,stroke:#333,stroke-width:4px```
 
 ## 🏗️ Technical Architecture
 
