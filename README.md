@@ -52,6 +52,7 @@ sequenceDiagram
     BE-->>FE: Update UI
     FE-->>User: Show Result
 ```
+
 ```mermaid
 graph TB
     subgraph Frontend
@@ -97,7 +98,8 @@ graph TB
 
     style Frontend fill:#f9f,stroke:#333,stroke-width:4px
     style Backend fill:#bbf,stroke:#333,stroke-width:4px
-    style Blockchain fill:#bfb,stroke:#333,stroke-width:4px```
+    style Blockchain fill:#bfb,stroke:#333,stroke-width:4px
+```
 
 ## 🏗️ Technical Architecture
 
